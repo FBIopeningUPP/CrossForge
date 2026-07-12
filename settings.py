@@ -1,5 +1,6 @@
 import json
 import os
+import base64
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
                             QComboBox, QSlider, QPushButton, QColorDialog,
                             QFileDialog, QInputDialog, QMessageBox)
@@ -9,8 +10,8 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 CONFIG_FILE = "profiles.json"
 
 DEFAULT_PROFILES = {
-    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10},
-    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10}
+    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15},
+    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15}
 }
 DARK_THEME = """
     QWidget {
@@ -137,7 +138,17 @@ class SettingsWindow(QWidget):
         profile_layout.addWidget(new_btn)
         main_layout.addLayout(profile_layout)
 
-        # --- LIVE PREVIEW BOX ---
+        share_layout = QHBoxLayout()
+        export_btn = QPushButton("Export Code")
+        export_btn.clicked.connect(self.export_code)
+
+        import_btn = QPushButton("Import Code")
+        import_btn.clicked.connect(self.import_code)
+
+        share_layout.addWidget(export_btn)
+        share_layout.addWidget(import_btn)
+        main_layout.addLayout(share_layout)
+
         preview_layout = QHBoxLayout()
         self.preview_canvas = PreviewCanvas(self.config)
         preview_layout.addStretch()
@@ -168,6 +179,15 @@ class SettingsWindow(QWidget):
         self.bloom_check.stateChanged.connect(self.update_bloom)
         layout.addRow("Enable Click Bloom:", self.bloom_check)
 
+        from PyQt6.QtWidgets import QCheckBox
+        self.move_check = QCheckBox()
+        self.move_check.setChecked(self.config.get("movement_bloom", False))
+        self.move_check.stateChanged.connect(self.update_move_bloom)
+        layout.addRow("Enable WASD Bloom:", self.move_check)
+
+        self.move_layout, self.move_slider = self.create_slider("movement_bloom_amount", 1, 50, self.config.get("movement_bloom_amount", 15), self.update_move_amount)
+        layout.addRow("WASD Bloom Amount:", self.move_layout)
+
         self.bloom_layout, self.bloom_slider = self.create_slider("bloom_amount", 1, 50, self.config.get("bloom_amount", 10), self.update_bloom_amount)
         layout.addRow("Bloom Amount:", self.bloom_layout)
 
@@ -175,6 +195,12 @@ class SettingsWindow(QWidget):
         self.color_btn.setStyleSheet(f"background-color: {self.config['color']}; color: black;")
         self.color_btn.clicked.connect(self.select_color)
         layout.addRow("Color:", self.color_btn)
+
+        from PyQt6.QtWidgets import QCheckBox
+        self.smart_color_check = QCheckBox()
+        self.smart_color_check.setChecked(self.config.get("smart_color", False))
+        self.smart_color_check.stateChanged.connect(self.update_smart_color)
+        layout.addRow("Auto-Contrast Mode:", self.smart_color_check)
 
         self.image_btn = QPushButton("Select Image")
         self.image_btn.clicked.connect(self.pick_image)
@@ -233,6 +259,10 @@ class SettingsWindow(QWidget):
         
         self.bloom_check.setChecked(self.config.get("bloom", False))
         self.bloom_slider.setValue(self.config.get("bloom_amount", 10))
+        
+        if hasattr(self, 'move_check'):
+            self.move_check.setChecked(self.config.get("movement_bloom", False))
+            self.move_slider.setValue(self.config.get("movement_bloom_amount", 15))
 
         self.size_slider.setValue(self.config["size"])
         self.thick_slider.setValue(self.config["thickness"])
@@ -287,4 +317,40 @@ class SettingsWindow(QWidget):
 
     def update_bloom_amount(self, val):
         self.config["bloom_amount"] = val
+        self.notify_change()
+
+    def export_code(self):
+        json_str = json.dumps(self.config)
+        code = base64.b64encode(json_str.encode("utf-8")).decode("utf-8")
+
+        from PyQt6.QtWidgets import QApplication
+        QApplication.clipboard().setText(code)
+
+        QMessageBox.information(self, "Export Successful", "Crosshair code copied to clipboard!\nShare this with your friends.")
+
+    def import_code(self):
+        code, ok = QInputDialog.getText(self, "Import Crosshair", "Paste code here:")
+        if ok and code:
+            try:
+                json_str = base64.b64decode(code.encode("utf-8")).decode("utf-8")
+                imported_config = json.loads(json_str)
+
+                self.config.update(imported_config)
+                self.refresh_ui_from_config()
+                self.notify_change
+
+                QMessageBox.information(self, "Import Sucessful", "Crosshair imported")
+            except Exception as e:
+                QMessageBox.warning(self, "Import Failed", "Invalid share code!")
+    
+    def update_move_bloom(self, state):
+        self.config["movement_bloom"] = bool(state)
+        self.notify_change()
+    
+    def update_move_amount(self, val):
+        self.config["movement_bloom_amount"] = val
+        self.notify_change()
+
+    def update_smart_color(self, state):
+        self.config["smart_color"] = bool(state)
         self.notify_change()

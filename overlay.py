@@ -7,6 +7,7 @@ class CrosshairOverlay(QWidget):
     def __init__(self):
         super().__init__()
         self.current_bloom = 0
+        self.current_move_bloom = 0
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
@@ -44,7 +45,7 @@ class CrosshairOverlay(QWidget):
         size = self.config["size"]
         half_size = size // 2
         style = self.config["style"]
-        gap = self.config.get("gap", 0) + self.current_bloom
+        gap = self.config.get("gap", 0) + self.current_bloom + self.current_move_bloom
         has_outline = self.config.get("outline", False)
 
         color = QColor(self.config["color"])
@@ -100,4 +101,14 @@ class CrosshairOverlay(QWidget):
     def on_release(self):
         if self.config.get("bloom", False):
             self.current_bloom = 0
+            self.repaint()
+            
+    def on_move_start(self):
+        if self.config.get("movement_bloom", False):
+            self.current_move_bloom = self.config.get("movement_bloom_amount", 15)
+            self.repaint()
+
+    def on_move_stop(self):
+        if self.config.get("movement_bloom", False):
+            self.current_move_bloom = 0
             self.repaint()

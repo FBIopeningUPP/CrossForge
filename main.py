@@ -28,7 +28,7 @@ class CrossForgeApp:
         self.setup_hotkeys()
 
         self.mouse_timer = QTimer()
-        self.mouse_timer.timeout.connect(self.check_mouse_hardware)
+        self.mouse_timer.timeout.connect(self.check_hardware)
         self.mouse_timer.start(16)
 
         self.overlay.show()
@@ -95,7 +95,8 @@ class CrossForgeApp:
         self.tray.hide()
         self.app.quit()
     
-    def check_mouse_hardware(self):
+    def check_hardware(self):
+        # 1. Mouse Check
         state = ctypes.windll.user32.GetAsyncKeyState(0x01)
         is_down = (state & 0x8000) != 0
 
@@ -105,6 +106,47 @@ class CrossForgeApp:
         elif not is_down and getattr(self, 'is_mouse_down', False):
             self.is_mouse_down = False
             self.signals.mouse_released.emit()
+            
+        # 2. WASD Check
+        is_moving = False
+        for key_code in (0x57, 0x41, 0x53, 0x44): # W, A, S, D
+            if (ctypes.windll.user32.GetAsyncKeyState(key_code) & 0x8000) != 0:
+                is_moving = True
+                break
+                
+        if is_moving and not getattr(self, 'is_moving', False):
+            self.is_moving = True
+            self.overlay.on_move_start()
+        elif not is_moving and getattr(self, 'is_moving', False):
+            self.is_moving = False
+            self.overlay.on_move_stop()
+
+    def check_screen_color(self):
+        if not self.settings.config.get("smart_color", False):
+            return
+
+        screen = self.app.primaryScreen()
+        if not screen: return
+
+        cx = screen.size().width() // 2
+        cy = screen.size().height() // 2
+
+        pixmap = screen.grabWindow(0, cx, cy, 1, 1)
+        image = pixmap.toImage()
+        pixel_color = image.pixelColor(0, 0)
+
+        r = 255 - pixel_color.red()
+        g = 255 - pixel_color.green()
+        b = 255 - pixel_color.blue()
+
+        if 100 < r < 155 and 100 < g < 155 and 100 < b < 155:
+            r, g, b = 255, 0, 0
+        
+        hex_color = f"#{r:02x}{g:02x}{b:02x}"
+        self.overlay.config["color"] = hex_color
+        self.overlay.repaint()
+
+        self.settings.color_btn.setStyleSheet(f"background-color: {hex_color}; color: black;")
 
     def run(self):
         sys.exit(self.app.exec())
