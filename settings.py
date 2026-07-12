@@ -13,7 +13,7 @@ class SettingsWindow(QWidget):
 
         self.config = current_config.copy()
 
-        self.init_ui
+        self.init_ui()
     
     def init_ui(self):
         layout = QFormLayout()
@@ -25,8 +25,8 @@ class SettingsWindow(QWidget):
         layout.addRow("Style:", self.style_combo)
 
         self.size_slider = self.create_slider(1, 200, self.config["size"], self.update_size)
-        layyout.addRow("Size:", self.size_slider)
-
+        layout.addRow("Size:", self.size_slider)
+        
         self.thick_slider = self.create_slider(1, 20, self.config["thickness"], self.update_thickness)
         layout.addRow("Thickness:", self.thick_slider)
 
@@ -34,18 +34,19 @@ class SettingsWindow(QWidget):
         layout.addRow("Opacity:", self.opac_slider)
 
         self.color_btn = QPushButton("Select Color")
-        self.color_btn.setStyleSheet(f"background-color: {self.config['color'].name()};")
+        self.color_btn.setStyleSheet(f"background-color: {self.config['color']};")
         self.color_btn.clicked.connect(self.select_color)
         layout.addRow("Color:", self.color_btn)
 
         self.image_btn = QPushButton("Select Image")
-        self.image_btn.clicked.connect(self.select_image)
+        self.image_btn.clicked.connect(self.pick_image)
         layout.addRow("Custom Image:", self.image_btn)
 
         main_layout = QVBoxLayout()
         main_layout.addLayout(layout)
+        self.setLayout(main_layout)
 
-    def create_slider(self, min_val, max_val, current_val, slot):
+    def create_slider(self, min_val, max_val, current_val, callback):
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setRange(min_val, max_val)
         slider.setValue(current_val)
@@ -72,7 +73,7 @@ class SettingsWindow(QWidget):
         color = QColorDialog.getColor()
         if color.isValid():
             hex_color = color.name()
-            self.config["color"] = color
+            self.config["color"] = hex_color
             self.color_btn.setStyleSheet(f"background-color: {hex_color}; color: black;")
             self.notify_change()
     

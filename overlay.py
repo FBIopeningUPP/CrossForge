@@ -20,7 +20,7 @@ class CrosshairOverlay(QWidget):
             "style": "Cross",
             "size": 20,
             "thickness": 2,
-            "color": QColor(255, 0, 0, 255),
+            "color": "#FF0000",
             "opacity": 255,
             "offset_x": 0,
             "offset_y": 0,
@@ -54,18 +54,18 @@ class CrosshairOverlay(QWidget):
             painter.drawLine(center.x() - half_size, center.y(), center.x() + half_size, center.y())
             painter.drawLine(center.x(), center.y() - half_size, center.x(), center.y() + half_size)
         
-        elif style == "dot":
+        elif style == "Dot":
             painter.setBrush(color)
             painter.drawEllipse(center, half_size, half_size)
         
-        elif style == "circle":
+        elif style == "Circle":
             painter.drawEllipse(center, half_size, half_size)
 
-        elif style == "x":
+        elif style == "X":
             painter.drawLine(center.x() - half_size, center.y() - half_size, center.x() + half_size, center.y() + half_size)
             painter.drawLine(center.x() - half_size, center.y() + half_size, center.x() + half_size, center.y() - half_size)
         
-        elif style == "image" and self.config["image_path"]:
+        elif style == "Image" and self.config["image_path"]:
             pixmap = QPixmap(self.config["image_path"])
             if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
