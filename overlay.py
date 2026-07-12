@@ -54,8 +54,20 @@ class CrosshairOverlay(QWidget):
         main_pen = QPen(color, self.config["thickness"])
         outline_pen = QPen(QColor(0, 0, 0, self.config["opacity"]), self.config["thickness"] + 2) 
 
+        painter.translate(center_x, center_y)
+        painter.rotate(self.config.get("rotation", 0))
+        painter.translate(-center_x, -center_y)
+
         def draw_shape(pen, is_outline=False):
             painter.setPen(pen)
+
+            if self.config.get("sniper_mode", False):
+                if not is_outline:
+                    painter.setBrush(QColor(255, 0, 0))
+                else:
+                    painter.setBrush(QColor(0, 0, 0, self.config["opacity"]))
+                painter.drawEllipse(center, 3, 3)
+                return
 
             if style == "Cross":
                 painter.drawLine(center_x - half_size, center_y, center_x - gap, center_y)
@@ -112,3 +124,8 @@ class CrosshairOverlay(QWidget):
         if self.config.get("movement_bloom", False):
             self.current_move_bloom = 0
             self.repaint()
+
+    def toggle_sniper_mode(self):
+        is_sniper = self.config.get("sniper_mode", False)
+        self.config["sniper_mode"] = not is_sniper
+        self.repaint()

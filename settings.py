@@ -10,8 +10,8 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 CONFIG_FILE = "profiles.json"
 
 DEFAULT_PROFILES = {
-    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15},
-    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15}
+    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False},
+    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False}
 }
 DARK_THEME = """
     QWidget {
@@ -173,6 +173,15 @@ class SettingsWindow(QWidget):
         self.opac_layout, self.opac_slider = self.create_slider("opacity", 0, 255, self.config["opacity"], self.update_opacity)
         layout.addRow("Opacity:", self.opac_layout)
 
+        self.rot_layout, self.rot_slider = self.create_slider("rotation", 0, 360, self.config.get("rotation", 0), self.update_rotation)
+        layout.addRow("Rotation Angle:", self.rot_layout)
+
+        from PyQt6.QtWidgets import QCheckBox
+        self.top_check = QCheckBox()
+        self.top_check.setChecked(self.config.get("always_on_top", False))
+        self.top_check.stateChanged.connect(self.update_always_on_top)
+        layout.addRow("Keep settings on top:", self.top_check)
+
         from PyQt6.QtWidgets import QCheckBox
         self.bloom_check = QCheckBox()
         self.bloom_check.setChecked(self.config.get("bloom", False))
@@ -272,6 +281,10 @@ class SettingsWindow(QWidget):
         if hasattr(self, 'preview_canvas'):
             self.preview_canvas.config = self.config
             self.preview_canvas.update_preview()
+        
+        if hasattr(self, 'top_check'):
+            self.top_check.setChecked(self.config.get("always_on_top", False))
+            self.apply_always_on_top()
 
     def update_style(self, value):
         self.config["style"] = value
@@ -354,3 +367,20 @@ class SettingsWindow(QWidget):
     def update_smart_color(self, state):
         self.config["smart_color"] = bool(state)
         self.notify_change()
+
+    def update_rotation(self, val):
+        self.config["rotation"] = val
+        self.notify_change()
+
+    def update_always_on_top(self, state):
+        self.config["always_on_top"] = bool(state)
+        self.apply_always_on_top()
+        self.notify_change()
+
+    def apply_always_on_top(self):
+        from PyQt6.QtCore import Qt
+        if self.config.get("always_on_top", False):
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+        else:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+        self.show() 

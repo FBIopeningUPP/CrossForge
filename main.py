@@ -11,6 +11,7 @@ from settings import SettingsWindow
 class HotKeySignals(QObject):
     toggle_overlay = pyqtSignal()
     toggle_settings = pyqtSignal()
+    toggle_sniper = pyqtSignal()
     mouse_pressed = pyqtSignal()
     mouse_released = pyqtSignal()
 
@@ -65,6 +66,8 @@ class CrossForgeApp:
         self.signals.toggle_overlay.connect(self.toggle_overlay)
         self.signals.toggle_settings.connect(self.toggle_settings)
 
+        self.signals.toggle_sniper.connect(self.overlay.toggle_sniper_mode)
+
         self.signals.mouse_pressed.connect(self.overlay.on_click)
         self.signals.mouse_released.connect(self.overlay.on_release)
 
@@ -73,6 +76,8 @@ class CrossForgeApp:
                 self.signals.toggle_overlay.emit()
             elif key == keyboard.Key.f3:
                 self.signals.toggle_settings.emit()
+            elif key == keyboard.Key.f4:
+                self.signals.toggle_sniper.emit()
         
         self.listener = keyboard.Listener(on_press=on_press)
         self.listener.start()
@@ -96,7 +101,6 @@ class CrossForgeApp:
         self.app.quit()
     
     def check_hardware(self):
-        # 1. Mouse Check
         state = ctypes.windll.user32.GetAsyncKeyState(0x01)
         is_down = (state & 0x8000) != 0
 
