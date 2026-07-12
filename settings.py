@@ -4,13 +4,84 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
                             QComboBox, QSlider, QPushButton, QColorDialog,
                             QFileDialog, QInputDialog, QMessageBox)
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 
 CONFIG_FILE = "profiles.json"
 
 DEFAULT_PROFILES = {
-    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":""},
-    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": ""}
+    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10},
+    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10}
 }
+DARK_THEME = """
+    QWidget {
+        background-color: #1E1E1E;
+        color: #E0E0E0;
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 10pt;
+    }
+    QPushButton {
+        background-color: #2D2D30;
+        border: 1px solid #3E3E42;
+        border-radius: 4px;
+        padding: 6px;
+    }
+    QPushButton:hover {
+        background-color: #3E3E42;
+        border: 1px solid #007ACC;
+    }
+    QSlider::groove:horizontal {
+        border: 1px solid #3E3E42;
+        height: 6px;
+        background: #2D2D30;
+        border-radius: 3px;
+    }
+    QSlider::handle:horizontal {
+        background: #007ACC;
+        width: 14px;
+        margin: -4px 0;
+        border-radius: 7px;
+    }
+    """
+class PreviewCanvas(QWidget):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.setFixedSize(150, 150)
+    
+    def update_preview(self):
+        self.repaint()
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        painter.fillRect(0, 0, self.width(), self.height(), QColor(30, 30, 30))
+
+        color = QColor(self.config["color"])
+        color.setAlpha(self.config["opacity"])
+        painter.setPen(QPen(color, self.config["thickness"]))
+
+        cx = self.width() // 2
+        cy = self.height() // 2
+        half_size = self.config["size"] // 2
+
+        style = self.config["style"]
+        
+        if style == "Cross":
+            painter.drawLine(cx - half_size, cy, cx + half_size, cy)
+            painter.drawLine(cx, cy - half_size, cx, cy + half_size)
+        elif style == "Dot":
+            painter.setBrush(color)
+            from PyQt6.QtCore import QPoint
+            painter.drawEllipse(QPoint(cx, cy), half_size, half_size)
+        elif style == "Circle":
+            from PyQt6.QtCore import QPoint
+            painter.drawEllipse(QPoint(cx, cy), half_size, half_size)
+        elif style == "X":
+            painter.drawLine(cx - half_size, cy - half_size, cx + half_size, cy + half_size)
+            painter.drawLine(cx - half_size, cy + half_size, cx + half_size, cy - half_size)
+        
+        painter.end()
 
 class SettingsWindow(QWidget):
     config_changed = pyqtSignal(dict)
@@ -19,6 +90,7 @@ class SettingsWindow(QWidget):
         super().__init__()
         self.setWindowTitle("CrossForge Settings")
         self.setMinimumWidth(350)
+        self.setStyleSheet(DARK_THEME)
 
         self.profiles = self.load_profiles()
         if not self.profiles:
@@ -27,6 +99,7 @@ class SettingsWindow(QWidget):
         self.current_profile_name = list(self.profiles.keys())[0]
         self.config = self.profiles[self.current_profile_name].copy()
 
+        self.slider_labels = {}
         self.init_ui()
         self.notify_change()
 
@@ -64,6 +137,14 @@ class SettingsWindow(QWidget):
         profile_layout.addWidget(new_btn)
         main_layout.addLayout(profile_layout)
 
+        # --- LIVE PREVIEW BOX ---
+        preview_layout = QHBoxLayout()
+        self.preview_canvas = PreviewCanvas(self.config)
+        preview_layout.addStretch()
+        preview_layout.addWidget(self.preview_canvas)
+        preview_layout.addStretch()
+        main_layout.addLayout(preview_layout)
+
         layout = QFormLayout()
 
         self.style_combo = QComboBox()
@@ -72,14 +153,23 @@ class SettingsWindow(QWidget):
         self.style_combo.currentTextChanged.connect(self.update_style)
         layout.addRow("Style:", self.style_combo)
 
-        self.size_slider = self.create_slider(1, 200, self.config["size"], self.update_size)
-        layout.addRow("Size:", self.size_slider)
+        self.size_layout, self.size_slider = self.create_slider("size", 1, 200, self.config["size"], self.update_size)
+        layout.addRow("Size:", self.size_layout)
 
-        self.thick_slider = self.create_slider(1, 20, self.config["thickness"], self.update_thickness)
-        layout.addRow("Thickness:", self.thick_slider)
+        self.thick_layout, self.thick_slider = self.create_slider("thickness", 1, 20, self.config["thickness"], self.update_thickness)
+        layout.addRow("Thickness:", self.thick_layout)
 
-        self.opac_slider = self.create_slider(0, 255, self.config["opacity"], self.update_opacity)
-        layout.addRow("Opacity:", self.opac_slider)
+        self.opac_layout, self.opac_slider = self.create_slider("opacity", 0, 255, self.config["opacity"], self.update_opacity)
+        layout.addRow("Opacity:", self.opac_layout)
+
+        from PyQt6.QtWidgets import QCheckBox
+        self.bloom_check = QCheckBox()
+        self.bloom_check.setChecked(self.config.get("bloom", False))
+        self.bloom_check.stateChanged.connect(self.update_bloom)
+        layout.addRow("Enable Click Bloom:", self.bloom_check)
+
+        self.bloom_layout, self.bloom_slider = self.create_slider("bloom_amount", 1, 50, self.config.get("bloom_amount", 10), self.update_bloom_amount)
+        layout.addRow("Bloom Amount:", self.bloom_layout)
 
         self.color_btn = QPushButton("Select Color")
         self.color_btn.setStyleSheet(f"background-color: {self.config['color']}; color: black;")
@@ -90,15 +180,30 @@ class SettingsWindow(QWidget):
         self.image_btn.clicked.connect(self.pick_image)
         layout.addRow("Custom Image:", self.image_btn)
 
+
         main_layout.addLayout(layout)
         self.setLayout(main_layout)
     
-    def create_slider(self, min_val, max_val, current_val, callback):
+    def create_slider(self, name, min_val, max_val, current_val, callback):
+        row_layout = QHBoxLayout()
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setRange(min_val, max_val)
         slider.setValue(current_val)
-        slider.valueChanged.connect(callback)
-        return slider
+        
+        from PyQt6.QtWidgets import QLabel
+        val_label = QLabel(str(current_val))
+        val_label.setMinimumWidth(30)
+        self.slider_labels[name] = val_label
+
+        row_layout.addWidget(slider)
+        row_layout.addWidget(val_label)
+
+        def on_change(val):
+            val_label.setText(str(val))
+            callback(val)
+        
+        slider.valueChanged.connect(on_change)
+        return row_layout, slider
 
     def change_profile(self, name):
         if name in self.profiles:
@@ -125,11 +230,18 @@ class SettingsWindow(QWidget):
         self.style_combo.blockSignals(True)
         self.style_combo.setCurrentText(self.config["style"])
         self.style_combo.blockSignals(False)
+        
+        self.bloom_check.setChecked(self.config.get("bloom", False))
+        self.bloom_slider.setValue(self.config.get("bloom_amount", 10))
 
         self.size_slider.setValue(self.config["size"])
         self.thick_slider.setValue(self.config["thickness"])
         self.opac_slider.setValue(self.config["opacity"])
         self.color_btn.setStyleSheet(f"background-color: {self.config['color']}; color: black;")
+
+        if hasattr(self, 'preview_canvas'):
+            self.preview_canvas.config = self.config
+            self.preview_canvas.update_preview()
 
     def update_style(self, value):
         self.config["style"] = value
@@ -165,3 +277,14 @@ class SettingsWindow(QWidget):
     def notify_change(self):
         self.config_changed.emit(self.config.copy())
         
+        if hasattr(self, 'preview_canvas'):
+            self.preview_canvas.config = self.config
+            self.preview_canvas.update_preview()
+
+    def update_bloom(self, state):
+        self.config["bloom"] = bool(state)
+        self.notify_change()
+
+    def update_bloom_amount(self, val):
+        self.config["bloom_amount"] = val
+        self.notify_change()

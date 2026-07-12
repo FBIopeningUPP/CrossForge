@@ -6,7 +6,7 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 class CrosshairOverlay(QWidget):
     def __init__(self):
         super().__init__()
-        
+        self.current_bloom = 0
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
@@ -37,11 +37,6 @@ class CrosshairOverlay(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        color = QColor(self.config["color"])
-        color.setAlpha(self.config["opacity"])
-        pen = QPen(color, self.config["thickness"])
-        painter.setPen(pen)
-
         center_x = (self.width() // 2) + self.config["offset_x"]
         center_y = (self.height() // 2) + self.config["offset_y"]
         center = QPoint(center_x, center_y)
@@ -49,26 +44,60 @@ class CrosshairOverlay(QWidget):
         size = self.config["size"]
         half_size = size // 2
         style = self.config["style"]
+        gap = self.config.get("gap", 0) + self.current_bloom
+        has_outline = self.config.get("outline", False)
 
-        if style == "Cross":
-            painter.drawLine(center.x() - half_size, center.y(), center.x() + half_size, center.y())
-            painter.drawLine(center.x(), center.y() - half_size, center.x(), center.y() + half_size)
-        
-        elif style == "Dot":
-            painter.setBrush(color)
-            painter.drawEllipse(center, half_size, half_size)
-        
-        elif style == "Circle":
-            painter.drawEllipse(center, half_size, half_size)
+        color = QColor(self.config["color"])
+        color.setAlpha(self.config["opacity"])
 
-        elif style == "X":
-            painter.drawLine(center.x() - half_size, center.y() - half_size, center.x() + half_size, center.y() + half_size)
-            painter.drawLine(center.x() - half_size, center.y() + half_size, center.x() + half_size, center.y() - half_size)
+        main_pen = QPen(color, self.config["thickness"])
+        outline_pen = QPen(QColor(0, 0, 0, self.config["opacity"]), self.config["thickness"] + 2) 
+
+        def draw_shape(pen, is_outline=False):
+            painter.setPen(pen)
+
+            if style == "Cross":
+                painter.drawLine(center_x - half_size, center_y, center_x - gap, center_y)
+                painter.drawLine(center_x + gap, center_y, center_x + half_size, center_y)
+                painter.drawLine(center_x, center_y - half_size, center_x, center_y - gap) 
+                painter.drawLine(center_x, center_y + gap, center_x, center_y + half_size)
+            
+            elif style == "Dot":
+                if not is_outline:
+                    painter.setBrush(color)
+                else:
+                    painter.setBrush(QColor(0, 0, 0, self.config["opacity"]))
+                painter.drawEllipse(center, half_size + gap, half_size + gap)
+
+            elif style == "Circle":
+                painter.drawEllipse(center, half_size + gap, half_size + gap)
+            
+            elif style == "X":
+                painter.drawLine(center_x - half_size, center_y - half_size, center_x - gap, center_y - gap)
+                painter.drawLine(center_x + gap, center_y + gap, center_x + half_size, center_y + half_size)
+                painter.drawLine(center_x - half_size, center_y + half_size, center_x - gap, center_y + gap)
+                painter.drawLine(center_x + gap, center_y - gap, center_x + half_size, center_y - half_size)
+            
+            elif style == "Image" and self.config["image_path"]:
+                if not is_outline:
+                    pixmap = QPixmap(self.config["image_path"])
+                    if not pixmap.isNull():
+                        scaled_pixmap = pixmap.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        painter.drawPixmap(center_x - (scaled_pixmap.width() // 2), center_y - (scaled_pixmap.height() // 2), scaled_pixmap)
         
-        elif style == "Image" and self.config["image_path"]:
-            pixmap = QPixmap(self.config["image_path"])
-            if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                painter.drawPixmap(center.x() - scaled_pixmap.width() // 2, center.y() - scaled_pixmap.height() // 2, scaled_pixmap)
+        if has_outline and style != "Image":
+            draw_shape(outline_pen, is_outline=True)
         
+        draw_shape(main_pen, is_outline=False)
+
         painter.end()
+        
+    def on_click(self):
+        if self.config.get("bloom", False):
+            self.current_bloom = self.config.get("bloom_amount", 10)
+            self.repaint()
+    
+    def on_release(self):
+        if self.config.get("bloom", False):
+            self.current_bloom = 0
+            self.repaint()

@@ -1,7 +1,8 @@
 import sys
+import ctypes
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PyQt6.QtGui import QIcon, QPixmap, QColor, QPainter
-from PyQt6.QtCore import pyqtSignal, QObject
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 from pynput import keyboard
 
 from overlay import CrosshairOverlay
@@ -10,6 +11,8 @@ from settings import SettingsWindow
 class HotKeySignals(QObject):
     toggle_overlay = pyqtSignal()
     toggle_settings = pyqtSignal()
+    mouse_pressed = pyqtSignal()
+    mouse_released = pyqtSignal()
 
 class CrossForgeApp:
     def __init__(self):
@@ -23,6 +26,10 @@ class CrossForgeApp:
 
         self.setup_tray()
         self.setup_hotkeys()
+
+        self.mouse_timer = QTimer()
+        self.mouse_timer.timeout.connect(self.check_mouse_hardware)
+        self.mouse_timer.start(16)
 
         self.overlay.show()
         self.settings.show()
@@ -58,6 +65,9 @@ class CrossForgeApp:
         self.signals.toggle_overlay.connect(self.toggle_overlay)
         self.signals.toggle_settings.connect(self.toggle_settings)
 
+        self.signals.mouse_pressed.connect(self.overlay.on_click)
+        self.signals.mouse_released.connect(self.overlay.on_release)
+
         def on_press(key):
             if key == keyboard.Key.f2:
                 self.signals.toggle_overlay.emit()
@@ -66,7 +76,7 @@ class CrossForgeApp:
         
         self.listener = keyboard.Listener(on_press=on_press)
         self.listener.start()
-    
+        
     def toggle_overlay(self):
         if self.overlay.isVisible():
             self.overlay.hide()
@@ -84,6 +94,17 @@ class CrossForgeApp:
         self.listener.stop()
         self.tray.hide()
         self.app.quit()
+    
+    def check_mouse_hardware(self):
+        state = ctypes.windll.user32.GetAsyncKeyState(0x01)
+        is_down = (state & 0x8000) != 0
+
+        if is_down and not getattr(self, 'is_mouse_down', False):
+            self.is_mouse_down = True
+            self.signals.mouse_pressed.emit()
+        elif not is_down and getattr(self, 'is_mouse_down', False):
+            self.is_mouse_down = False
+            self.signals.mouse_released.emit()
 
     def run(self):
         sys.exit(self.app.exec())
