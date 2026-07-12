@@ -58,12 +58,12 @@ class CrossForgeApp:
         self.signals.toggle_overlay.connect(self.toggle_overlay)
         self.signals.toggle_settings.connect(self.toggle_settings)
 
-    def on_press(key):
-        if key == keyboard.Key.f2:
-            self.signals.toggle_overlay.emit()
-        elif key == keyboard.Key.f3:
-            self.signals.toggle_settings.emit()
-
+        def on_press(key):
+            if key == keyboard.Key.f2:
+                self.signals.toggle_overlay.emit()
+            elif key == keyboard.Key.f3:
+                self.signals.toggle_settings.emit()
+        
         self.listener = keyboard.Listener(on_press=on_press)
         self.listener.start()
     
