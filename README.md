@@ -26,4 +26,4 @@ If you are on Mac/Linux or just want to run the raw Python files:
 3. Run `python main.py`
 
 ## AI Usage
-AI helped me fix some weird UI CSS bugs and explain Windows memory hooks, but the core logic is all me. Definitely under the 30% rule!
+AI helped me fix some weird UI CSS bugs and explain the hardware hooks, but the core logic is all me. Definitely under the 30% rule!
