@@ -32,6 +32,16 @@ class CrosshairOverlay(QWidget):
 
     def update_config(self, new_config):
         self.config.update(new_config)
+
+        if "monitor" in self.config:
+            from PyQt6.QtWidgets import QApplication
+            screens = QApplication.instance().screens()
+            idx = self.config["monitor"]
+
+            if idx < len(screens):
+                rect = screens[idx].geometry()
+                self.setGeometry(rect)
+        
         self.repaint()
     
     def paintEvent(self, event):

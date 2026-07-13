@@ -10,37 +10,64 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 CONFIG_FILE = "profiles.json"
 
 DEFAULT_PROFILES = {
-    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False},
-    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False}
+    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0},
+    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0}
 }
 DARK_THEME = """
     QWidget {
-        background-color: #1E1E1E;
-        color: #E0E0E0;
+        background-color: #0F1923;
+        color: #ECE8E1;
         font-family: 'Segoe UI', sans-serif;
         font-size: 10pt;
     }
     QPushButton {
-        background-color: #2D2D30;
-        border: 1px solid #3E3E42;
+        background-color: #FF4655;
+        color: white;
+        border: none;
         border-radius: 4px;
-        padding: 6px;
+        padding: 8px 16px;
+        font-weight: bold;
     }
     QPushButton:hover {
-        background-color: #3E3E42;
-        border: 1px solid #007ACC;
+        background-color: #E03C4A;
+    }
+    QComboBox {
+        background-color: #1F2E3D;
+        border: 1px solid #3E5266;
+        border-radius: 4px;
+        padding: 4px 8px;
+    }
+    QComboBox:hover {
+        border: 1px solid #FF4655;
+    }
+    QComboBox::drop-down {
+        border: none;
     }
     QSlider::groove:horizontal {
-        border: 1px solid #3E3E42;
-        height: 6px;
-        background: #2D2D30;
-        border-radius: 3px;
+        border:none;
+        height: 8px;
+        background: #1F2E3D;
+        border-radius: 4px;
     }
     QSlider::handle:horizontal {
-        background: #007ACC;
-        width: 14px;
+        background: #FF4655;
+        height: 16px;
         margin: -4px 0;
-        border-radius: 7px;
+        border-radius: 8px;
+    }
+    QSlider::handle:horizontal:hover {
+        background: #ECE8E1;
+    }
+    QCheckBox::indicator {
+        width: 18px;
+        height: 18px;
+        border: 1px solid #3E5266;
+        border-radius: 4px;
+        background-color: #1F2E3D;
+    }
+    QCheckBox::indicator:checked {
+        background-color: #FF4655;
+        border: 1px solid #FF4655
     }
     """
 class PreviewCanvas(QWidget):
@@ -215,6 +242,17 @@ class SettingsWindow(QWidget):
         self.image_btn.clicked.connect(self.pick_image)
         layout.addRow("Custom Image:", self.image_btn)
 
+        from PyQt6.QtWidgets import QApplication
+        self.screen_combo = QComboBox()
+
+        screens = QApplication.instance().screens()
+        for idx in range(len(screens)):
+            self.screen_combo.addItem(f"Monitor {idx + 1}")
+        
+        self.screen_combo.setCurrentIndex(self.config.get("monitor", 0))
+        self.screen_combo.currentIndexChanged.connect(self.update_monitor)
+        layout.addRow("Select Display:", self.screen_combo)
+
 
         main_layout.addLayout(layout)
         self.setLayout(main_layout)
@@ -285,6 +323,8 @@ class SettingsWindow(QWidget):
         if hasattr(self, 'top_check'):
             self.top_check.setChecked(self.config.get("always_on_top", False))
             self.apply_always_on_top()
+        
+        self.screen_combo.setCurrentIndex(self.config.get("monitor", 0))
 
     def update_style(self, value):
         self.config["style"] = value
@@ -383,4 +423,8 @@ class SettingsWindow(QWidget):
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
         else:
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
-        self.show() 
+        self.show()
+    
+    def update_monitor(self, index):
+        self.config["monitor"] = index
+        self.notify_change()
