@@ -16,10 +16,8 @@ I built CrossForge because I was tired of crosshair overlays that cause input la
 Since this is a Python desktop app, I compiled it into a standalone Windows `.exe` so reviewers don't have to install Python or pip dependencies to test it. 
 
 1. Go to the **Releases** tab on the right side of this GitHub repo.
-2. Download `CrossForge-Windows.zip` and extract the folder.
-3. Because I compiled this myself, Windows Defender SmartScreen might pop up and block it. If it does, just click **"More info"** -> **"Run anyway"**.
-4. Double-click `CrossForge.exe` (or `main.exe`) to run it!
-5. Press `F2` to toggle the crosshair and `F3` to open the settings menu.
+2. Download `CrossForge.exe` and run it.
+3. Press `F2` to toggle the crosshair and `F3` to open the settings menu.
 
 ## How to build it from source
 If you are on Mac/Linux or just want to run the raw Python files:
