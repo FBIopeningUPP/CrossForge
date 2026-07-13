@@ -72,11 +72,23 @@ class CrossForgeApp:
         self.signals.mouse_released.connect(self.overlay.on_release)
 
         def on_press(key):
-            if key == keyboard.Key.f2:
+            key_str = str(key)
+
+            if getattr(self.settings, 'listening_for', None):
+                target = self.settings.listening_for
+                self.settings.config[target] = key_str
+
+                self.settings.active_bind_btn.setText(f"{target.split('_')[1].title()}: {key_str}")
+
+                self.settings.listening_for = None
+                self.settings.active_bind_btn = None
+                self.settings.notify_change
+            
+            if key_str == self.settings.config.get("hotkey_overlay", "Key.f2"):
                 self.signals.toggle_overlay.emit()
-            elif key == keyboard.Key.f3:
+            elif key_str == self.settings.config.get("hotkey_settings", "Key.f3"):
                 self.signals.toggle_settings.emit()
-            elif key == keyboard.Key.f4:
+            elif key_str == self.settings.config.get("hotkey_sniper", "Key.f4"):
                 self.signals.toggle_sniper.emit()
         
         self.listener = keyboard.Listener(on_press=on_press)

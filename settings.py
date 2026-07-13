@@ -10,8 +10,8 @@ from PyQt6.QtGui import QPainter, QPen, QColor, QPixmap
 CONFIG_FILE = "profiles.json"
 
 DEFAULT_PROFILES = {
-    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0},
-    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0}
+    "Default Cross": {"style": "Cross", "size": 20, "thickness": 2, "color": "#00FF00", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path":"", "outline": True, "gap": 5, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0, "hotkey_overlay": "Key.f2", "hotkey_settings": "Key.f3", "hotkey_sniper": "Key.f4"},
+    "Sniper Dot": {"style": "Dot", "size": 6, "thickness": 1, "color": "#FF0000", "opacity": 255, "offset_x": 0, "offset_y": 0, "image_path": "", "outline": False, "gap": 0, "bloom": False, "bloom_amount": 10, "smart_color": False, "movement_bloom": False, "movement_bloom_amount": 15, "rotation": 0, "always_on_top": False, "monitor": 0, "hotkey_overlay": "Key.f2", "hotkey_settings": "Key.f3", "hotkey_sniper": "Key.f4"}
 }
 DARK_THEME = """
     QWidget {
@@ -253,6 +253,20 @@ class SettingsWindow(QWidget):
         self.screen_combo.currentIndexChanged.connect(self.update_monitor)
         layout.addRow("Select Display:", self.screen_combo)
 
+        self.listening_for = None
+        self.active_bind_btn = None
+
+        hotkey_layout = QHBoxLayout()
+        
+        self.bind_overlay_btn = QPushButton(f"Overlay: {self.config.get('hotkey_overlay', 'Key.f2')}")
+        self.bind_overlay_btn.clicked.connect(lambda: self.start_binding("hotkey_overlay", self.bind_overlay_btn))
+
+        self.bind_settings_btn = QPushButton(f"Menu: {self.config.get('hotkey_settings', 'Key.f3')}")
+        self.bind_settings_btn.clicked.connect(lambda: self.start_binding("hotkey_settings", self.bind_settings_btn))
+
+        hotkey_layout.addWidget(self.bind_overlay_btn)
+        hotkey_layout.addWidget(self.bind_settings_btn)
+        layout.addRow("Custom Hotkeys:", hotkey_layout)
 
         main_layout.addLayout(layout)
         self.setLayout(main_layout)
@@ -428,3 +442,8 @@ class SettingsWindow(QWidget):
     def update_monitor(self, index):
         self.config["monitor"] = index
         self.notify_change()
+
+    def start_binding(self, target, button):
+        self.listening_for = target
+        self.active_bind_btn = button
+        button.setText("Press any key...")
